@@ -1,10 +1,7 @@
 import express from 'express';
 import pkg from 'pg';
 import Cursor from 'pg-cursor';
-
 const { Pool } = pkg;
-
-
 const pool = new Pool({
   host: 'localhost',
   user: 'postgres',
@@ -12,10 +9,11 @@ const pool = new Pool({
   database: 'banco',
   port: 5432,
 });
-
 // 1. Crear una función asíncrona que registre una nueva transacción
 async function registrarTransaccion(cuenta, monto, descripcion) {
+  console.log("Acuerdate que estoy ejecutando la funcion Registrar Transaccion");
   const client = await pool.connect();
+  
 
   try {
     await client.query('BEGIN');
@@ -24,7 +22,7 @@ async function registrarTransaccion(cuenta, monto, descripcion) {
     if (cuentaResult.rows.length === 0) {
       throw new Error('Cuenta no encontrada');
     }
-
+//aqui hacer try cath en cada una por cada query
     const saldoActual = cuentaResult.rows[0].saldo;
     if (saldoActual < monto) {
       throw new Error('Saldo insuficiente');
@@ -44,74 +42,64 @@ async function registrarTransaccion(cuenta, monto, descripcion) {
     await client.query('ROLLBACK');
     throw error;
   } finally {
+    console.log("Se libera la conexion");
     client.release();
   }
 }
-
-// 2. Realizar una función asíncrona que consulte la tabla de transacciones
-
-// async function consultarTransacciones(cuenta) {
-//   const client = await pool.connect();
-
-//   try {
-//     const cursor = client.query(new Cursor('SELECT * FROM transacciones WHERE cuenta = $1 ORDER BY fecha DESC LIMIT 10', [cuenta]));
-//     const rows = [];
-//     for await (const row of cursor) {
-//       rows.push(row);
-//     }
-//     console.log('Últimas 10 transacciones:', rows);
-//   } finally {
-//     client.release();
-//   }
-// }
-
+//2. Realizar una función asíncrona que consulte la tabla de transacciones
 async function consultarTransacciones(cuenta) {
   const client = await pool.connect();
-
   try {
     const cursor = client.query(new Cursor('SELECT * FROM transacciones WHERE cuenta = $1 ORDER BY fecha DESC LIMIT 10', [cuenta]));
-
+    
     function readRows() {
       cursor.read(10, (err, rows) => {
         if (err) {
           throw err;
         }
-
         if (rows.length === 0) {
-          // No more rows
           return;
         }
 
         console.log('Transacciones:', rows);
-
-        // Read next batch of rows
         readRows();
       });
     }
-
     readRows();
   } finally {
     client.release();
   }
 }
-
-
-// 3. Realizar una función asíncrona que consulte el saldo de una cuenta
+//3. Realizar una función asíncrona que consulte el saldo de una cuenta
 async function consultarSaldo(cuenta) {
   const client = await pool.connect();
-
   try {
     const cursor = client.query(new Cursor('SELECT saldo FROM cuentas WHERE id = $1', [cuenta]));
-    const rows = [];
-    for await (const row of cursor) {
-      rows.push(row);
-    }
-    console.log('Saldo:', rows[0].saldo);
+    cursor.read(1, (err, rows) => {
+      if (err) {
+        console.error('Error al leer saldo:', err);
+        return;
+      }
+
+      if (rows.length === 0) {
+        console.log('No se encontró saldo para la cuenta.');
+      } else {
+        const saldo = parseInt(rows[0].saldo, 10); // Convierte a entero
+        if (isNaN(saldo)) {
+          console.log('El valor del saldo no es un número válido.');
+        } else if (saldo < 0) {
+          console.log('El saldo es negativo.');
+        } else {
+          console.log('Saldo:', saldo);
+        }
+      }
+
+      cursor.close();
+    });
   } finally {
     client.release();
   }
 }
-
 async function main() {
   const command = process.argv[2];
   const cuenta = process.argv[3];
@@ -124,7 +112,7 @@ async function main() {
         await registrarTransaccion(cuenta, monto, descripcion);
         break;
       case 'consultar-transacciones':
-        await consultarTransacciones(cuenta);
+        await consultarTransacciones(cuenta);  //en la otra parte para atrapar tendria que ser en la funcion si no encuentra cuando hace la consulta que arroje un mensaje
         break;
       case 'consultar-saldo':
         await consultarSaldo(cuenta);
@@ -138,5 +126,4 @@ async function main() {
     console.error('Error al realizar la operación:', error);
   }
 }
-
 main().catch((error) => console.error('Error en la aplicación', error));

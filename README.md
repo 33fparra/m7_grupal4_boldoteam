@@ -1,5 +1,5 @@
 <img src="public/images/boldoMedio.png" align="right" />
- <h1 align= left ><b>Grupal 3 M7 /EquipoBoldo</b> <img src = "https://media.giphy.com/media/gF2m2JOyGReppog8hU/giphy.gif" width = 80px></h1>
+ <h1 align= left ><b>Grupal 4 M7 /EquipoBoldo</b> <img src = "https://media.giphy.com/media/gF2m2JOyGReppog8hU/giphy.gif" width = 80px></h1>
 
 <br>
 
